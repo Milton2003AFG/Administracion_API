@@ -1,0 +1,45 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourPassword123!
+    ports:
+      - "1433:1433"
+    networks:
+      - appnet
+
+  init-db:
+    image: mcr.microsoft.com/mssql-tools
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./script.sql:/script.sql
+    entrypoint: >
+      bash -c "
+      sleep 25 &&
+      /opt/mssql-tools/bin/sqlcmd -S db -U sa -P YourPassword123! -d master -i /script.sql
+      "
+    networks:
+      - appnet
+
+  api:
+    build: ./api
+    container_name: api
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_USER=sa
+      - DB_PASS=YourPassword123!
+      - DB_SERVER=db
+      - DB_NAME=SOUL
+    depends_on:
+      - db
+    networks:
+      - appnet
+
+networks:
+  appnet:
+    driver: bridge
